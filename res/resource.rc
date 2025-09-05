@@ -1,0 +1,7 @@
+#include "resource.h"
+
+IDI_APPICON               ICON "keyboard_remapper_appicon.ico"
+IDI_TRAYICON_LIGHT        ICON "keyboard_remapper_light.ico"
+IDI_TRAYICON_PAUSED_LIGHT ICON "keyboard_remapper_paused_light.ico"
+IDI_TRAYICON_DARK         ICON "keyboard_remapper_dark.ico"
+IDI_TRAYICON_PAUSED_DARK  ICON "keyboard_remapper_paused_dark.ico"

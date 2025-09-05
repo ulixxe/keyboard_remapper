@@ -1,0 +1,29 @@
+# Hold Tab to enable vi-style movement key remapping.
+
+remap_key=TAB
+when_alone=TAB
+with_other=
+when_press=layer_vi
+
+# layer for vi movements
+remap_key=KEY_H
+layer=layer_vi
+when_alone=LEFT
+
+remap_key=KEY_J
+layer=layer_vi
+when_alone=DOWN
+
+remap_key=KEY_K
+layer=layer_vi
+when_alone=UP
+
+remap_key=KEY_L
+layer=layer_vi
+when_alone=RIGHT
+
+# configurations
+hold_delay=60
+tap_timeout=500
+doublepress_timeout=200
+debug=0

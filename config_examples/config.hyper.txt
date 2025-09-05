@@ -1,0 +1,12 @@
+# hyper key with simple remapping
+remap_key=RIGHT_ALT
+when_alone=CTRL
+when_alone=ALT
+when_alone=SHIFT
+when_alone=LEFT_WIN
+
+# configurations
+hold_delay=60
+tap_timeout=500
+doublepress_timeout=200
+debug=0

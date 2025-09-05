@@ -33,27 +33,28 @@ when_alone=SHIFT
 when_alone=LEFT_WIN
 
 # layer definition
-define_layer=layer_ctrl_win
-and_layer=layer_ctrl
+define_layer=layer_shift_win
+and_layer=layer_shift
 and_layer=layer_win
 
 # right win as layer selector
 remap_key=RIGHT_WIN
 when_tap_lock=set_layer_vi
+when_double_tap_lock=reset_layer_vi
+when_double_tap_lock=reset_layer_mouse
 
 remap_key=RIGHT_WIN
 layer=layer_vi
 when_tap_lock=reset_layer_vi
-when_tap_lock=set_layer_page
-
-remap_key=RIGHT_WIN
-layer=layer_page
-when_tap_lock=reset_layer_page
 when_tap_lock=set_layer_mouse
+when_double_tap_lock=reset_layer_vi
+when_double_tap_lock=reset_layer_mouse
 
 remap_key=RIGHT_WIN
 layer=layer_mouse
 when_tap_lock=reset_layer_mouse
+when_double_tap_lock=reset_layer_vi
+when_double_tap_lock=reset_layer_mouse
 
 # layer selectors
 remap_key=LEFT_CTRL
@@ -64,19 +65,18 @@ when_doublepress=layer_mouse
 # layer definition
 define_layer=layer_vi
 or_layer=layer_tab
-and_layer=layer_ctrl_win
+and_layer=layer_shift_win
 and_not_layer=layer_alt
-and_not_layer=layer_shift
+and_not_layer=layer_ctrl
+
+define_layer=layer_page
+and_layer=layer_vi
+and_layer=layer_ctrl
 
 # layer_vi lock
 remap_key=SPACE
 layer=layer_vi
 when_tap_lock=toggle_layer_vi
-
-# layer_page lock
-remap_key=SPACE
-layer=layer_page
-when_tap_lock=toggle_layer_page
 
 # layer_mouse lock
 remap_key=SPACE

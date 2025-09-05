@@ -1,0 +1,9 @@
+remap_key=CAPSLOCK
+when_alone=ESCAPE
+with_other=CTRL
+
+# configurations
+hold_delay=60
+tap_timeout=500
+doublepress_timeout=200
+debug=0

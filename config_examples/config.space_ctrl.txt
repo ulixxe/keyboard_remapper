@@ -1,0 +1,9 @@
+remap_key=SPACE
+when_alone=SPACE
+with_other=RIGHT_CTRL
+
+# configurations
+hold_delay=60
+tap_timeout=500
+doublepress_timeout=200
+debug=0

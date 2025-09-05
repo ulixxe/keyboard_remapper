@@ -13,6 +13,7 @@ The idea for **keyboard_remapper** is inspired by the excellent work of **ililim
 5. Remap locking.
 6. Layers, incorporating layer lock concepts from [Pascal Getreuer](https://getreuer.info/posts/keyboards/layer-lock/index.html).
 7. Mouse emulation, inspired by the Orbital Mouse ideas from [Pascal Getreuer](https://getreuer.info/posts/keyboards/orbital-mouse/index.html).
+8. System Tray icon to manage **keyboard_remapper** application.
 
 My use case for **keyboard_remapper** involves creating lower-level keyboard remappings, specifically to remap the spacebar to function as both the space key and the right Ctrl key. Additionally, I set up a layer for Vi-style hjkl movements. On top of **keyboard_remapper**, I use [AutoHotkey](https://www.autohotkey.com/) for managing hotkeys and hotstrings, as well as for implementing Emacs key bindings universally with [ewow](https://github.com/zk-phi/ewow).
 

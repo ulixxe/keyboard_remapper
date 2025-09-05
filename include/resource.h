@@ -1,0 +1,10 @@
+#ifndef RESOURCE_H
+#define RESOURCE_H
+
+#define IDI_APPICON               101
+#define IDI_TRAYICON_LIGHT        102
+#define IDI_TRAYICON_PAUSED_LIGHT 103
+#define IDI_TRAYICON_DARK         104
+#define IDI_TRAYICON_PAUSED_DARK  105
+
+#endif // RESOURCE_H
