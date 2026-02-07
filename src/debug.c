@@ -19,38 +19,51 @@ static int g_log_duplicates = 1;
 int g_log_last_packet_size = 0;
 int g_debug_buffer_max = 0;
 struct DebugBuffer g_debug_buffer;
+static FILE *g_debug_file = NULL;
 
-// Debug Logging
-// -------------------------------------
+void debug_file_init(void) {
+  g_debug_file = fopen("debug.log", "a");
+  if (g_debug_file) {
+    setvbuf(g_debug_file, NULL, _IOLBF, 1024);
+  }
+}
+
+void debug_file_cleanup(void) {
+  if (g_debug_file) {
+    fflush(g_debug_file);
+    fclose(g_debug_file);
+    g_debug_file = NULL;
+  }
+}
+
 void debug_file(const char *message) {
-  if (message == NULL) return;
-  FILE *log_file = fopen("debug.log", "a");
-  if (log_file == NULL) return;
+  if (g_debug_file == NULL) debug_file_init();
+  if (message == NULL || !g_debug_file) return;
   time_t now = time(NULL);
   if (now == (time_t)-1) {
-    fprintf(log_file, "[unknown time] %s\n", message);
-    fclose(log_file);
+    fprintf(g_debug_file, "[unknown time] %s\n", message);
     return;
   }
   struct tm tm_buf;
   if (localtime_s(&tm_buf, &now) != 0) {
-    fprintf(log_file, "[invalid time] %s\n", message);
-    fclose(log_file);
+    fprintf(g_debug_file, "[invalid time] %s\n", message);
     return;
   }
   char timestamp[64];
-  if (strftime(timestamp, sizeof(timestamp),
-               "%Y-%m-%d %H:%M:%S", &tm_buf) == 0) {
-    fprintf(log_file, "[time fmt error] %s\n", message);
+  if (strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &tm_buf) == 0) {
+    fprintf(g_debug_file, "[time fmt error] %s\n", message);
   } else {
-    fprintf(log_file, "[%s] %s\n", timestamp, message);
+    fprintf(g_debug_file, "[%s] %s\n", timestamp, message);
   }
-  fclose(log_file);
 }
 
 void debug_print(const char *color, const char *format, ...) {
   va_list args;
   va_start(args, format);
+
+  printf(ANSI_BACK(g_status_lines));
+  g_status_lines = 0;
+  g_log_last_packet_size = 0;
 
   printf("%s", color);
   vprintf(format, args);
@@ -65,6 +78,9 @@ static VOID CALLBACK debug_callback(PVOID lpParam, BOOLEAN TimerOrWaitFired) {
   int debug_timer = *(int *)lpParam;
   int duplicate_indent_level = 0;
   char buf[8];
+  int do_return = 0;
+  int back_lines = g_status_lines;
+  int front_lines = 0;
   while (!debug_buffer_empty(&g_debug_buffer)) {
     n = debug_buffer_move_cons_head(&g_debug_buffer, DEBUG_BUFFER_SIZE, &tail);
     if (n > 0) {
@@ -79,17 +95,19 @@ static VOID CALLBACK debug_callback(PVOID lpParam, BOOLEAN TimerOrWaitFired) {
             g_log_last_packet_size = 0;
             g_log_duplicates = 1;
           } else if (((head - curr) & DEBUG_BUFFER_MASK) == packet_size &&
-              (now_ms - g_debug_buffer.debugs[curr & DEBUG_BUFFER_MASK].key_time < DEBUG_INTERVAL_MS/2)) {
+                     (now_ms - g_debug_buffer.debugs[curr & DEBUG_BUFFER_MASK].key_time < DEBUG_INTERVAL_MS/2)) {
             debug_buffer_revert_cons_head(&g_debug_buffer, curr);
             debug_buffer_update_tail(&g_debug_buffer.cons, tail, (curr - tail) & DEBUG_BUFFER_MASK);
-            return;
+            do_return = 1;
+            break;
           } else {
             if ((DEBUG_BUFFER_SIZE - 1 - ((g_debug_buffer.prod.pos.tail - curr) & DEBUG_BUFFER_MASK)) >= 1 &&
                 g_log_last_packet_size == 1) {
               if (debug_buffer_compare(&g_debug_buffer, curr - 1, curr, 1)) {
                 packet_size = 1;
                 g_log_duplicates++;
-                printf(ANSI_BACK(1));
+                printf(ANSI_BACK(1+back_lines));
+                back_lines = 0;
                 snprintf(buf, sizeof(buf), "x%d", g_log_duplicates);
                 duplicate_indent_level = printf("%*s |", 4, buf) - 1;
               } else {
@@ -99,7 +117,8 @@ static VOID CALLBACK debug_callback(PVOID lpParam, BOOLEAN TimerOrWaitFired) {
                        g_log_last_packet_size == packet_size) {
               if (debug_buffer_compare(&g_debug_buffer, curr - packet_size, curr, packet_size)) {
                 g_log_duplicates++;
-                printf(ANSI_BACK(packet_size));
+                printf(ANSI_BACK((int)(packet_size+back_lines)));
+                back_lines = 0;
                 snprintf(buf, sizeof(buf), "x%d", g_log_duplicates);
                 duplicate_indent_level = printf("%*s |", 4, buf) - 1;
               } else {
@@ -112,25 +131,39 @@ static VOID CALLBACK debug_callback(PVOID lpParam, BOOLEAN TimerOrWaitFired) {
           }
           for (uint32_t i = 0; i < packet_size; i++) {
             const struct DebugData *entry = &g_debug_buffer.debugs[(curr + i) & DEBUG_BUFFER_MASK];
-            if (i > 0 && g_log_duplicates > 1)
+            if (g_log_duplicates == 1) {
+              if (back_lines != 0) {
+                printf(ANSI_BACK(back_lines));
+                back_lines = 0;
+              }
+              printf("      ");
+              front_lines++;
+            } else if (i > 0)
               printf("%*s%s", duplicate_indent_level, "", "|");
             if (entry->data_type == 1) {
               g_log_indent_level = printf("%3d: %+5d ",
                                           entry->id,
                                           entry->time_offset);
-              printf("%s", entry->data);
+              printf("%s%s\n", entry->data, ANSI_CLEAR_EOL);
             } else {
-              printf("%*s%s", g_log_indent_level, "", entry->data);
+              printf("%*s%s%s\n", g_log_indent_level, "", entry->data, ANSI_CLEAR_EOL);
             }
           }
           curr = curr + packet_size;
         }
+        if (do_return) break;
       } else {
         g_log_last_packet_size = 0;
       }
       debug_buffer_update_tail(&g_debug_buffer.cons, tail, n);
     }
   }
+  int new_status_lines = print_status(back_lines, front_lines != 0);
+  if (new_status_lines+front_lines < g_status_lines) {
+    for (uint32_t i = 0; i < g_status_lines-(new_status_lines+front_lines); i++) printf("\n%s", ANSI_CLEAR_EOL);
+    printf(ANSI_BACK(g_status_lines-new_status_lines));
+  }
+  g_status_lines = new_status_lines;
 }
 
 void log_handle_input_start(int scan_code, int virt_code, enum Direction direction, DWORD time, int is_injected, DWORD flags, ULONG_PTR dwExtraInfo) {
@@ -152,7 +185,7 @@ void log_handle_input_start(int scan_code, int virt_code, enum Direction directi
   out->data_type = 1;
   out->len = snprintf(out->data,
                       sizeof(out->data),
-                      "[%s] %s %s (scan:0x%04X virt:0x%02X flags:0x%02X dwExtraInfo:0x%IX)\n",
+                      "[%s] %s %s (scan:0x%04X virt:0x%02X flags:0x%02X dwExtraInfo:0x%IX)",
                       (is_injected && ((dwExtraInfo & 0xFFFFFF00) == INJECTED_KEY_ID)) ? "output" : "input",
                       friendly_virt_code_name(virt_code),
                       (direction == DOWN) ? "DOWN" : "UP",
@@ -190,7 +223,7 @@ void log_handle_input_end(int scan_code, int virt_code, enum Direction direction
     out->data_type = 2;
     out->len = snprintf(out->data,
                         sizeof(out->data),
-                        "blocked-input: %s %s\n",
+                        "blocked-input: %s %s",
                         friendly_virt_code_name(virt_code),
                         (direction == DOWN) ? "DOWN" : "UP");
     if (out->len >= sizeof(out->data)) {
@@ -223,7 +256,7 @@ void log_send_input(char *remap_name, const KeyDef *key, enum Direction directio
   out->data_type = 2;
   out->len = snprintf(out->data,
                       sizeof(out->data),
-                      "%s: %s %s\n",
+                      "%s: %s %s",
                       remap_name,
                       key ? key->name : "???",
                       (direction == DOWN) ? "DOWN" : "UP");

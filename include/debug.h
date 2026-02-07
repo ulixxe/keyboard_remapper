@@ -8,30 +8,36 @@
 #define DEBUG(cond, x) do{}while(0)
 
 static inline const char* ansi_back(int n) {
-  static char buf[16];  // plenty for "\x1b[12345F"
-  char *p = buf;
-  if (n == 0) {
-    return "\x1b[G";   // current line
+  enum {RING = 8, BUFSZ = 16};
+  static __declspec(thread) char bufs[RING][BUFSZ];
+  static __declspec(thread) unsigned idx;
+
+  char *buf = bufs[idx++ % RING];
+
+  if (n <= 0) {
+    buf[0] = '\x1b';
+    buf[1] = '[';
+    buf[2] = 'G';
+    buf[3] = '\0';
+    return buf;
   }
+
+  char *p = buf;
   *p++ = '\x1b';
   *p++ = '[';
-  char tmp[12];  // enough for 32-bit int
+
+  // write decimal n
+  char tmp[10];
   int len = 0;
-  int num = n;
-  if (num == 0) {
-    tmp[len++] = '0';
-  } else {
-    while (num > 0 && len < (int)sizeof(tmp)) {
-      tmp[len++] = '0' + (num % 10);
-      num /= 10;
-    }
+  unsigned int num = (unsigned int)n;
+  while (num > 0) {
+    tmp[len++] = (char)('0' + (num % 10));
+    num /= 10;
   }
-  while (len--) {
-    *p++ = tmp[len];
-  }
+  while (len--) *p++ = tmp[len];
+
   *p++ = 'F';
   *p = '\0';
-
   return buf;
 }
 
@@ -43,16 +49,19 @@ static inline double now_sec(void) {
   return (double)counter.QuadPart / (double)freq.QuadPart;
 }
 
-#define ANSI_BACK(n) ansi_back(n)
-#define ANSI_RESET   "\x1b[0m"
-#define ANSI_RED     "\x1b[31m"
-#define ANSI_GREEN   "\x1b[32m"
-#define ANSI_YELLOW  "\x1b[33m"
-#define ANSI_BLUE    "\x1b[34m"
-#define ANSI_MAGENTA "\x1b[35m"
-#define ANSI_CYAN    "\x1b[36m"
-#define ANSI_WHITE   "\x1b[37m"
+#define ANSI_BACK(n)    ansi_back(n)
+#define ANSI_ERASE_LINE "\x1b[2K"
+#define ANSI_CLEAR_EOL  "\x1b[0K"
+#define ANSI_RESET      "\x1b[0m"
+#define ANSI_RED        "\x1b[31m"
+#define ANSI_GREEN      "\x1b[32m"
+#define ANSI_YELLOW     "\x1b[33m"
+#define ANSI_BLUE       "\x1b[34m"
+#define ANSI_MAGENTA    "\x1b[35m"
+#define ANSI_CYAN       "\x1b[36m"
+#define ANSI_WHITE      "\x1b[37m"
 
+void debug_file_cleanup(void);
 void debug_file(const char *message);
 void debug_print(const char *color, const char *format, ...);
 void log_handle_input_start(int scan_code,

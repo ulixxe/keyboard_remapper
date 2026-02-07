@@ -120,7 +120,7 @@ static void buttons_send(struct MouseState *state, int remap_id, struct InputBuf
     return;
   }
   INPUT *out = &input_buffer->inputs[index];
-  ZeroMemory(out, sizeof(INPUT));
+  //ZeroMemory(out, sizeof(INPUT));
   out->type = INPUT_MOUSE;
   out->mi.dwExtraInfo = (ULONG_PTR)INJECTED_KEY_ID | remap_id;
 
@@ -177,7 +177,7 @@ static void buttons_send(struct MouseState *state, int remap_id, struct InputBuf
         return;
       }
       out = &input_buffer->inputs[index];
-      ZeroMemory(out, sizeof(INPUT));
+      //ZeroMemory(out, sizeof(INPUT));
       out->type = INPUT_MOUSE;
       out->mi.dwExtraInfo = (ULONG_PTR)INJECTED_KEY_ID | remap_id;
     }
@@ -211,7 +211,7 @@ static void move_send(struct MouseState *state, int remap_id, struct InputBuffer
     return;
   }
   INPUT *out = &input_buffer->inputs[index];
-  ZeroMemory(out, sizeof(INPUT));
+  //ZeroMemory(out, sizeof(INPUT));
   out->type = INPUT_MOUSE;
   out->mi.dwExtraInfo = (ULONG_PTR)INJECTED_KEY_ID | remap_id;
 
@@ -290,7 +290,7 @@ static void move_send(struct MouseState *state, int remap_id, struct InputBuffer
         return;
       }
       out = &input_buffer->inputs[index];
-      ZeroMemory(out, sizeof(INPUT));
+      //ZeroMemory(out, sizeof(INPUT));
       out->type = INPUT_MOUSE;
       out->mi.dwExtraInfo = (ULONG_PTR)INJECTED_KEY_ID | remap_id;
     }

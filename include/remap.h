@@ -18,5 +18,8 @@ int handle_input(
 void unlock_all(struct InputBuffer *input_buffer);
 
 extern DWORD g_last_input;
+extern int g_filtered_events;
+extern int g_remapped_events;
+extern int g_processed_events;
 
 #endif // REMAP_H

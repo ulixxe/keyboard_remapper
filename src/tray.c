@@ -198,6 +198,9 @@ static LRESULT CALLBACK TrayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
 
     case ID_TRAY_RESET:
       unlock_all(&g_input_buffer);
+      if (!input_buffer_empty(&g_input_buffer))
+        SetEvent(g_hEvent);
+      debug_file_cleanup();
       rehook();
       g_pause = 0;
       g_input_buffer_max = 0;
@@ -215,19 +218,7 @@ static LRESULT CALLBACK TrayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
       break;
 
     case ID_TRAY_DEBUG:
-      if (g_debug) {
-        g_debug = 0;
-        if (g_hDebugTimer)
-          DeleteTimerQueueTimer(g_hTimerQueue, g_hDebugTimer, INVALID_HANDLE_VALUE);
-        g_hDebugTimer = NULL;
-        destroy_console();
-      } else {
-        create_console();
-        print_status();
-        printf("-- DEBUG MODE --\n");
-        g_debug = 1;
-      }
-      g_log_last_packet_size = 0;
+      toggle_debug_mode_async();
       return 0;
 
     case ID_TRAY_ABOUT:

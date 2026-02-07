@@ -7,6 +7,9 @@
 #include "debug.h"
 
 DWORD g_last_input = 0;
+int g_filtered_events = 0;
+int g_remapped_events = 0;
+int g_processed_events = 0;
 
 // Remapping
 // -------------------------------------
@@ -471,6 +474,7 @@ int handle_input(int scan_code, int virt_code, enum Direction direction, DWORD t
   } else if (scan_code == 0x022A) {
     // To filter out unwanted key events generated on certain HP laptops
     block_input = 1;
+    g_filtered_events++;
   } else {
     g_last_input = time;
     if (is_injected) {
@@ -518,8 +522,10 @@ int handle_input(int scan_code, int virt_code, enum Direction direction, DWORD t
       } else {
         block_input = event_remapped_key_down(remap_for_input, time, input_buffer);
       }
+      g_remapped_events++;
     } else {
       block_input = event_other_input(virt_code, direction, time, remap_id, input_buffer);
+      g_processed_events++;
     }
   }
   if (g_debug) log_handle_input_end(scan_code, virt_code, direction, block_input);

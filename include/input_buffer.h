@@ -26,7 +26,7 @@ struct InputBuffer {
 };
 
 static inline void input_buffer_init(struct InputBuffer *input_buffer) {
-  //ZeroMemory(input_buffer->inputs, sizeof(input_buffer->inputs));
+  ZeroMemory(input_buffer->inputs, sizeof(input_buffer->inputs));
   input_buffer->prod.raw = 0;
   input_buffer->cons.raw = 0;
 }
@@ -44,6 +44,18 @@ static inline uint32_t input_buffer_move_prod_head(struct InputBuffer *input_buf
   } while (InterlockedCompareExchange64(&input_buffer->prod.raw, new.raw, old.raw) != old.raw);
   *old_head = old.pos.head;
   return 1;
+}
+
+static inline void input_buffer_clear_cons(struct InputBuffer *input_buffer, uint32_t n) {
+  uint32_t tail, ncont;
+  tail = input_buffer->cons.pos.tail & INPUT_BUFFER_MASK;
+  ncont = INPUT_BUFFER_SIZE - tail;
+  if (n > ncont && ncont > 0) {
+    ZeroMemory(&input_buffer->inputs[0], (n-ncont)*sizeof(INPUT));
+    ZeroMemory(&input_buffer->inputs[tail], ncont*sizeof(INPUT));
+  } else {
+    ZeroMemory(&input_buffer->inputs[tail], n*sizeof(INPUT));
+  }
 }
 
 static inline uint32_t input_buffer_move_cons_head(struct InputBuffer *input_buffer, int num, uint32_t *old_head) {

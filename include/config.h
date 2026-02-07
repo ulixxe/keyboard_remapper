@@ -100,7 +100,7 @@ extern struct Layer *g_layer_list;
 
 int load_config_line(char *line, int linenum);
 void print_layer_list(struct Layer *head);
-void print_status();
+int print_status(int back_lines, int force_print);
 void free_all();
 
 #endif // CONFIG_H

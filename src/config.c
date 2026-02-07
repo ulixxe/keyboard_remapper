@@ -6,6 +6,7 @@
 #include "keyboard_remapper.h"
 #include "debug_buffer.h"
 #include "debug.h"
+#include "remap.h"
 
 // Globals
 int g_debug = 0;
@@ -54,56 +55,150 @@ void print_layer_list(struct Layer *head) {
   }
 }
 
-void print_status() {
+int print_status(int back_lines, int force_print) {
+  static int prev_keyboard_blocked_events = 0;
+  static int prev_keyboard_passthrough_events = 0;
+  static int prev_mouse_blocked_events = 0;
+  static int prev_mouse_passthrough_events = 0;
+  static int prev_remapped_events = 0;
+  static int prev_processed_events = 0;
+  static int prev_filtered_events = 0;
+  static int prev_input_buffer_count = 0;
+  static int prev_input_buffer_max = 0;
+  static int prev_debug_buffer_count = 0;
+  static int prev_debug_buffer_max = 0;
+  int curr_input_buffer_count = 0;
+  int curr_debug_buffer_count = 0;
+  int lines = 1+7+1+1+1;
+  if (force_print != 0)
+    printf("%s\n", ANSI_CLEAR_EOL);
+  else if (back_lines != 0)
+    back_lines--;
+  else
+    printf("\n");
+  if (force_print != 0 || g_keyboard_blocked_events != prev_keyboard_blocked_events || g_keyboard_passthrough_events != prev_keyboard_passthrough_events) {
+    if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
+    printf("Keyboard blocked events:     %6d/%6d%s\n", g_keyboard_blocked_events, g_keyboard_blocked_events+g_keyboard_passthrough_events, ANSI_CLEAR_EOL);
+    printf("Keyboard passthrough events: %6d/%6d%s\n", g_keyboard_passthrough_events, g_keyboard_blocked_events+g_keyboard_passthrough_events, ANSI_CLEAR_EOL);
+  } else if (back_lines != 0)
+    back_lines = back_lines - 2;
+  else
+    printf("\n\n");
+  if (force_print != 0 || g_mouse_blocked_events != prev_mouse_blocked_events || g_mouse_passthrough_events != prev_mouse_passthrough_events) {
+    if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
+    printf("Mouse blocked events:        %6d/%6d%s\n", g_mouse_blocked_events, g_mouse_blocked_events+g_mouse_passthrough_events, ANSI_CLEAR_EOL);
+    printf("Mouse passthrough events:    %6d/%6d%s\n", g_mouse_passthrough_events, g_mouse_blocked_events+g_mouse_passthrough_events, ANSI_CLEAR_EOL);
+  } else if (back_lines != 0)
+    back_lines = back_lines - 2;
+  else
+    printf("\n\n");
+  if (force_print != 0 || g_remapped_events != prev_remapped_events || g_processed_events != prev_processed_events || g_filtered_events != prev_filtered_events) {
+    if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
+    printf("Remapped events:             %6d/%6d%s\n", g_remapped_events, g_remapped_events+g_processed_events+g_filtered_events, ANSI_CLEAR_EOL);
+    printf("Processed events:            %6d/%6d%s\n", g_processed_events, g_remapped_events+g_processed_events+g_filtered_events, ANSI_CLEAR_EOL);
+    printf("Filtered out events:         %6d/%6d%s\n", g_filtered_events, g_remapped_events+g_processed_events+g_filtered_events, ANSI_CLEAR_EOL);
+  } else if (back_lines != 0)
+    back_lines = back_lines - 3;
+  else
+    printf("\n\n\n");
   struct Layer *layer_iter = g_layer_list;
-  printf("Active Layers:\n");
+  if (force_print != 0) {
+    if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
+    printf("Active Layers:%s\n", ANSI_CLEAR_EOL);
+  } else if (back_lines != 0)
+    back_lines = back_lines - 1;
+  else
+    printf("\n");
   while (layer_iter) {
-    if (layer_iter->state)
-      printf("  - %s\n", layer_iter->name);
+    if (layer_iter->state) {
+      if (force_print != 0 || 1) {
+        if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
+        printf("  - %s%s\n", layer_iter->name, ANSI_CLEAR_EOL);
+      } else if (back_lines != 0)
+        back_lines = back_lines - 1;
+      else
+        printf("\n");
+      lines++;
+    }
     layer_iter = layer_iter->next;
   }
-  printf("\n");
-  printf("Active Remappings:\n");
+  if (force_print != 0) {
+    if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
+    printf("Active Remappings:%s\n", ANSI_CLEAR_EOL);
+  } else if (back_lines != 0)
+    back_lines = back_lines - 1;
+  else
+    printf("\n");
   struct Remap *remap_iter = g_remap_list;
   while (remap_iter) {
-    printf("  - %s", remap_iter->from->name);
-    switch (remap_iter->state) {
-    case IDLE:
-      printf(" (%s)\n", "IDLE");
-      break;
-    case HELD_DOWN_ALONE:
-      printf(" (%s)\n", "HELD_DOWN_ALONE");
-      break;
-    case HELD_DOWN_WITH_OTHER:
-      printf(" (%s)\n", "HELD_DOWN_WITH_OTHER");
-      break;
-    case TAP:
-      printf(" (%s)\n", "TAP");
-      break;
-    case TAPPED:
-      printf(" (%s)\n", "TAPPED");
-      break;
-    case DOUBLE_TAP:
-      printf(" (%s)\n", "DOUBLE_TAP");
-      break;
-    default:
-      printf(" (%s)\n", "UNKNOWN");
-      break;
-    }
+    if (force_print != 0 || 1) {
+      if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
+      printf("  - %s", remap_iter->from->name);
+      switch (remap_iter->state) {
+      case IDLE:
+        printf(" (%s)", "IDLE");
+        break;
+      case HELD_DOWN_ALONE:
+        printf(" (%s)", "HELD_DOWN_ALONE");
+        break;
+      case HELD_DOWN_WITH_OTHER:
+        printf(" (%s)", "HELD_DOWN_WITH_OTHER");
+        break;
+      case TAP:
+        printf(" (%s)", "TAP");
+        break;
+      case TAPPED:
+        printf(" (%s)", "TAPPED");
+        break;
+      case DOUBLE_TAP:
+        printf(" (%s)", "DOUBLE_TAP");
+        break;
+      default:
+        printf(" (%s)", "UNKNOWN");
+        break;
+      }
+      printf("%s\n", ANSI_CLEAR_EOL);
+    } else if (back_lines != 0)
+      back_lines = back_lines - 1;
+    else
+      printf("\n");
     remap_iter = remap_iter->next;
+    lines++;
   }
-  printf("\n");
-  printf("Input buffer utilization: %d/%d (%d/%d peak)\n",
-         input_buffer_count(&g_input_buffer),
-         INPUT_BUFFER_SIZE,
-         g_input_buffer_max,
-         INPUT_BUFFER_SIZE);
-  printf("Debug buffer utilization: %d/%d (%d/%d peak)\n",
-         debug_buffer_count(&g_debug_buffer),
-         DEBUG_BUFFER_SIZE,
-         g_debug_buffer_max,
-         DEBUG_BUFFER_SIZE);
-  printf("\n");
+  curr_input_buffer_count = input_buffer_count(&g_input_buffer);
+  if (force_print != 0 || curr_input_buffer_count != prev_input_buffer_count || g_input_buffer_max != prev_input_buffer_max) {
+    if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
+    printf("Input buffer utilization: %3d/%3d (%3d/%3d peak)%s\n",
+           curr_input_buffer_count,
+           INPUT_BUFFER_SIZE,
+           g_input_buffer_max,
+           INPUT_BUFFER_SIZE,
+           ANSI_CLEAR_EOL);
+  } else if (back_lines != 0)
+    back_lines = back_lines - 1;
+  else
+    printf("\n");
+  curr_debug_buffer_count = debug_buffer_count(&g_debug_buffer);
+  if (force_print != 0 || curr_debug_buffer_count != prev_debug_buffer_count || g_debug_buffer_max != prev_debug_buffer_max) {
+    printf("Debug buffer utilization: %3d/%3d (%3d/%3d peak)%s",
+           curr_debug_buffer_count,
+           DEBUG_BUFFER_SIZE,
+           g_debug_buffer_max,
+           DEBUG_BUFFER_SIZE,
+           ANSI_CLEAR_EOL);
+  }
+  prev_keyboard_blocked_events = g_keyboard_blocked_events;
+  prev_keyboard_passthrough_events = g_keyboard_passthrough_events;
+  prev_mouse_blocked_events = g_mouse_blocked_events;
+  prev_mouse_passthrough_events = g_mouse_passthrough_events;
+  prev_remapped_events = g_remapped_events;
+  prev_processed_events = g_processed_events;
+  prev_filtered_events = g_filtered_events;
+  prev_input_buffer_count = curr_input_buffer_count;
+  prev_input_buffer_max = g_input_buffer_max;
+  prev_debug_buffer_count = curr_debug_buffer_count;
+  prev_debug_buffer_max = g_debug_buffer_max;
+  return lines;
 }
 
 static void toggle_layer_lock(struct Layer *layer) {
