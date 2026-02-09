@@ -168,6 +168,18 @@ static DWORD WINAPI send_input_thread(LPVOID arg) {
   }
 }
 
+static BOOL WINAPI console_ctrl_handler(DWORD ctrl_type) {
+  switch (ctrl_type) {
+  case CTRL_CLOSE_EVENT:
+    // Console window is being closed
+    close_all();
+    PostQuitMessage(0);
+    return TRUE;
+  default:
+    return FALSE;
+  }
+}
+
 static void enable_ansi_support() {
   HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
   DWORD mode = 0;
@@ -183,12 +195,14 @@ void create_console() {
     freopen("CONOUT$", "w", stdout);
     freopen("CONOUT$", "w", stderr);
     enable_ansi_support();
+    SetConsoleCtrlHandler(console_ctrl_handler, TRUE);
   }
 }
 
 void destroy_console() {
   if (GetConsoleWindow() == NULL)
     return;
+  SetConsoleCtrlHandler(console_ctrl_handler, FALSE);
   fclose(stdout);
   fclose(stderr);
   FreeConsole();
