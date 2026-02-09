@@ -168,6 +168,9 @@ static DWORD WINAPI send_input_thread(LPVOID arg) {
   }
 }
 
+// Forward declaration
+static void close_all();
+
 static BOOL WINAPI console_ctrl_handler(DWORD ctrl_type) {
   switch (ctrl_type) {
   case CTRL_CLOSE_EVENT:
