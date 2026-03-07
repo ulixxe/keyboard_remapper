@@ -1,6 +1,5 @@
 #include <windows.h>
 #include <shellapi.h>
-#include <shlwapi.h>
 #include <stdio.h>
 #include "tray.h"
 #include "resource.h"
@@ -203,8 +202,8 @@ static LRESULT CALLBACK TrayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
       debug_file_cleanup();
       rehook();
       g_pause = 0;
-      g_input_buffer_max = 0;
-      g_debug_buffer_max = 0;
+      g_status = (struct Status){0};
+      profiler_init(&g_profiler_timer);
       Tray_Modify(g_hIconNormal, "keyboard_remapper");
       return 0;
 
@@ -273,7 +272,7 @@ static void EnableBestDpiAwareness(void) {
 // -----------------------------------------------------------------------------
 // public
 // -----------------------------------------------------------------------------
-HWND Tray_Init() {
+HWND Tray_Init(void) {
   EnableBestDpiAwareness();
 
   HINSTANCE hInst = GetModuleHandle(NULL);

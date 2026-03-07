@@ -1,14 +1,15 @@
 #ifndef KEYS_H
 #define KEYS_H
 
+#define VIRT_CODE_SIZE 512 // power of 2
+#define VIRT_CODE_MASK (VIRT_CODE_SIZE-1)
+
 typedef struct {
   const char *name;
   int scan_code;
   int virt_code;
   int modifier;
 } KeyDef;
-
-#define MOUSE_DUMMY_VK 0xFF
 
 void keys_init(void);
 int find_modifier_by_virt_code(int code);

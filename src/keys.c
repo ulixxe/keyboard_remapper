@@ -328,15 +328,15 @@ static const KeyDef key_table[] = {
   {  "MOUSE_BACKWARD",     MS_B,           0,               0x00  },
   {  "MOUSE_STEER_LEFT",   MS_S_L,         0,               0x00  },
   {  "MOUSE_STEER_RIGHT",  MS_S_R,         0,               0x00  },
-  {  "MOUSE_WHEEL_UP",     MS_W_U,         0,               0x00  },
-  {  "MOUSE_WHEEL_DOWN",   MS_W_D,         0,               0x00  },
-  {  "MOUSE_WHEEL_LEFT",   MS_W_L,         0,               0x00  },
-  {  "MOUSE_WHEEL_RIGHT",  MS_W_R,         0,               0x00  },
-  {  "MOUSE_LBUTTON",      MS_BTN1,        0,               0x00  },
-  {  "MOUSE_RBUTTON",      MS_BTN2,        0,               0x00  },
-  {  "MOUSE_MBUTTON",      MS_BTN3,        0,               0x00  },
-  {  "MOUSE_XBUTTON1",     MS_BTN4,        0,               0x00  },
-  {  "MOUSE_XBUTTON2",     MS_BTN5,        0,               0x00  },
+  {  "MOUSE_WHEEL_UP",     MS_W_U,         0x100|MS_W_U,    0x00  },
+  {  "MOUSE_WHEEL_DOWN",   MS_W_D,         0x100|MS_W_D,    0x00  },
+  {  "MOUSE_WHEEL_LEFT",   MS_W_L,         0x100|MS_W_L,    0x00  },
+  {  "MOUSE_WHEEL_RIGHT",  MS_W_R,         0x100|MS_W_R,    0x00  },
+  {  "MOUSE_LBUTTON",      MS_BTN1,        0x100|MS_BTN1,   0x00  },
+  {  "MOUSE_RBUTTON",      MS_BTN2,        0x100|MS_BTN2,   0x00  },
+  {  "MOUSE_MBUTTON",      MS_BTN3,        0x100|MS_BTN3,   0x00  },
+  {  "MOUSE_XBUTTON1",     MS_BTN4,        0x100|MS_BTN4,   0x00  },
+  {  "MOUSE_XBUTTON2",     MS_BTN5,        0x100|MS_BTN5,   0x00  },
   {  "MOUSE_SBUTTON",      MS_BTNS,        0,               0x00  },
   {  "MOUSE_SHOLD",        MS_HLDS,        0,               0x00  },
   {  "MOUSE_SRELEASE",     MS_RELS,        0,               0x00  },
@@ -349,7 +349,6 @@ static const KeyDef key_table[] = {
 
 static const KeyDef nokey_table[] = {
   /* name                  scan            virt             mod */
-  {  "<MOUSE INPUT>",         0,           MOUSE_DUMMY_VK,  0  },
   {  "<ZERO_CODE>",           0,           0x00,            0  },
   {  "<MOUSE_LEFT>",          0,           0x01,            0  },
   {  "<MOUSE_RIGHT>",         0,           0x02,            0  },
@@ -438,23 +437,23 @@ static const KeyDef UNKNOWN_KEY = { "<UNKNOWN>", 0, 0, 0 };
 
 static const size_t key_table_len = sizeof(key_table) / sizeof(KeyDef);
 static const size_t nokey_table_len = sizeof(nokey_table) / sizeof(KeyDef);
-static const KeyDef *key_array[256];
+static const KeyDef *key_array[VIRT_CODE_SIZE];
 
 void keys_init(void) {
   size_t i;
   int vk;
-  for (i = 0; i < 256; i++) {
+  for (i = 0; i < VIRT_CODE_SIZE; i++) {
     key_array[i] = &UNKNOWN_KEY;
   }
   for (i = 0; i < nokey_table_len; i++) {
     vk = nokey_table[i].virt_code;
-    if (vk > 0 && vk < 256) {
+    if (vk >= 0 && vk < VIRT_CODE_SIZE) {
       key_array[vk] = &nokey_table[i];
     }
   }
   for (i = 0; i < key_table_len; i++) {
     vk = key_table[i].virt_code;
-    if (vk > 0 && vk < 256) {
+    if (vk > 0 && vk < VIRT_CODE_SIZE) {
       key_array[vk] = &key_table[i];
     }
   }
@@ -478,12 +477,12 @@ const KeyDef *find_key_def_by_scan_code(int code) {
 }
 
 const KeyDef *find_key_def_by_virt_code(int code) {
-  if (code < 0 || code > 255) return &UNKNOWN_KEY;
+  if (code < 0 || code >= VIRT_CODE_SIZE) return &UNKNOWN_KEY;
   return key_array[code];
 }
 
 int find_modifier_by_virt_code(int code) {
-  if (code < 0 || code > 255) return 0;
+  if (code < 0 || code >= VIRT_CODE_SIZE) return 0;
   return key_array[code]->modifier;
 }
 

@@ -7,6 +7,27 @@
 //#define DEBUG(cond, x) do { if ((cond & 1 || cond & 0) && g_debug) { x;} } while (0)
 #define DEBUG(cond, x) do{}while(0)
 
+struct ProfilerTimer {
+  LARGE_INTEGER delta_time, max_delta_time;
+};
+
+static inline void profiler_init(struct ProfilerTimer* t) {
+  t->delta_time.QuadPart = 0;
+  t->max_delta_time.QuadPart = 0;
+}
+
+static inline void profiler_start(LARGE_INTEGER* start) {
+  QueryPerformanceCounter(start);
+}
+
+static inline void profiler_stop(struct ProfilerTimer* t, LARGE_INTEGER start) {
+  LARGE_INTEGER stop;
+  QueryPerformanceCounter(&stop);
+  t->delta_time.QuadPart = stop.QuadPart - start.QuadPart;
+  if (t->delta_time.QuadPart > t->max_delta_time.QuadPart)
+    t->max_delta_time.QuadPart = t->delta_time.QuadPart;
+}
+
 static inline const char* ansi_back(int n) {
   enum {RING = 8, BUFSZ = 16};
   static __declspec(thread) char bufs[RING][BUFSZ];
@@ -41,14 +62,6 @@ static inline const char* ansi_back(int n) {
   return buf;
 }
 
-// inline high-resolution timer
-static inline double now_sec(void) {
-  LARGE_INTEGER freq, counter;
-  QueryPerformanceFrequency(&freq);
-  QueryPerformanceCounter(&counter);
-  return (double)counter.QuadPart / (double)freq.QuadPart;
-}
-
 #define ANSI_BACK(n)    ansi_back(n)
 #define ANSI_ERASE_LINE "\x1b[2K"
 #define ANSI_CLEAR_EOL  "\x1b[0K"
@@ -81,7 +94,7 @@ void log_send_input(char *remap_name,
 
 extern HANDLE g_hDebugTimer;
 extern struct DebugBuffer g_debug_buffer;
-extern int g_debug_buffer_max;
 extern int g_log_last_packet_size;
+extern struct ProfilerTimer g_profiler_timer;
 
 #endif // DEBUG_H

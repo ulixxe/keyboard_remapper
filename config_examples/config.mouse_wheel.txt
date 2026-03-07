@@ -1,0 +1,21 @@
+# Use the right mouse button as a layer key:
+# hold right mouse button + wheel up = A, wheel down = B
+
+remap_key=MOUSE_RBUTTON
+when_alone=MOUSE_RBUTTON
+with_other=
+when_press=layer_rbutton
+
+remap_key=MOUSE_WHEEL_UP
+layer=layer_rbutton
+when_alone=KEY_A
+
+remap_key=MOUSE_WHEEL_DOWN
+layer=layer_rbutton
+when_alone=KEY_B
+
+# configurations
+hold_delay=60
+tap_timeout=500
+doublepress_timeout=200
+debug=0

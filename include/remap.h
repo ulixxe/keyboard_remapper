@@ -5,8 +5,7 @@
 #include "keyboard_remapper.h"
 #include "input_buffer.h"
 
-int handle_input(
-                 int scan_code,
+int handle_input(int scan_code,
                  int virt_code,
                  enum Direction direction,
                  DWORD time,
@@ -18,8 +17,5 @@ int handle_input(
 void unlock_all(struct InputBuffer *input_buffer);
 
 extern DWORD g_last_input;
-extern int g_filtered_events;
-extern int g_remapped_events;
-extern int g_processed_events;
 
 #endif // REMAP_H

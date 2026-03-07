@@ -1,0 +1,19 @@
+# Swap mouse wheel directions and swap left/right mouse buttons
+
+remap_key=MOUSE_WHEEL_UP
+when_alone=MOUSE_WHEEL_DOWN
+
+remap_key=MOUSE_WHEEL_DOWN
+when_alone=MOUSE_WHEEL_UP
+
+remap_key=MOUSE_RBUTTON
+when_alone=MOUSE_LBUTTON
+
+remap_key=MOUSE_LBUTTON
+when_alone=MOUSE_RBUTTON
+
+# configurations
+hold_delay=60
+tap_timeout=500
+doublepress_timeout=200
+debug=0

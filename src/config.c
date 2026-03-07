@@ -6,7 +6,6 @@
 #include "keyboard_remapper.h"
 #include "debug_buffer.h"
 #include "debug.h"
-#include "remap.h"
 
 // Globals
 int g_debug = 0;
@@ -18,8 +17,8 @@ int g_unlock_timeout = 60000;
 int g_scancode = 0;
 int g_priority = 1;
 struct Remap *g_remap_list = NULL;
-struct Remap *g_remap_by_id[256] = {NULL};
-struct RemapNode *g_remap_array[256] = {NULL};
+struct Remap *g_remap_by_id[REMAP_ID_SIZE] = {NULL};
+struct RemapNode *g_remap_array[VIRT_CODE_SIZE] = {NULL};
 struct Layer *g_layer_list = NULL;
 static struct Remap *g_remap_parsee = NULL;
 static struct Layer *g_layer_parsee = NULL;
@@ -56,47 +55,40 @@ void print_layer_list(struct Layer *head) {
 }
 
 int print_status(int back_lines, int force_print) {
-  static int prev_keyboard_blocked_events = 0;
-  static int prev_keyboard_passthrough_events = 0;
-  static int prev_mouse_blocked_events = 0;
-  static int prev_mouse_passthrough_events = 0;
-  static int prev_remapped_events = 0;
-  static int prev_processed_events = 0;
-  static int prev_filtered_events = 0;
+  static struct Status prev_status = {0};
   static int prev_input_buffer_count = 0;
-  static int prev_input_buffer_max = 0;
   static int prev_debug_buffer_count = 0;
-  static int prev_debug_buffer_max = 0;
+  static LARGE_INTEGER prev_delta_time = {0};
   int curr_input_buffer_count = 0;
   int curr_debug_buffer_count = 0;
-  int lines = 1+7+1+1+1;
+  int lines = 1+7+1+1+1+1;
   if (force_print != 0)
     printf("%s\n", ANSI_CLEAR_EOL);
   else if (back_lines != 0)
     back_lines--;
   else
     printf("\n");
-  if (force_print != 0 || g_keyboard_blocked_events != prev_keyboard_blocked_events || g_keyboard_passthrough_events != prev_keyboard_passthrough_events) {
+  if (force_print != 0 || g_status.keyboard_blocked_events != prev_status.keyboard_blocked_events || g_status.keyboard_passthrough_events != prev_status.keyboard_passthrough_events) {
     if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
-    printf("Keyboard blocked events:     %6d/%6d%s\n", g_keyboard_blocked_events, g_keyboard_blocked_events+g_keyboard_passthrough_events, ANSI_CLEAR_EOL);
-    printf("Keyboard passthrough events: %6d/%6d%s\n", g_keyboard_passthrough_events, g_keyboard_blocked_events+g_keyboard_passthrough_events, ANSI_CLEAR_EOL);
+    printf("Keyboard blocked events:     %6d/%6d%s\n", g_status.keyboard_blocked_events, g_status.keyboard_blocked_events+g_status.keyboard_passthrough_events, ANSI_CLEAR_EOL);
+    printf("Keyboard passthrough events: %6d/%6d%s\n", g_status.keyboard_passthrough_events, g_status.keyboard_blocked_events+g_status.keyboard_passthrough_events, ANSI_CLEAR_EOL);
   } else if (back_lines != 0)
     back_lines = back_lines - 2;
   else
     printf("\n\n");
-  if (force_print != 0 || g_mouse_blocked_events != prev_mouse_blocked_events || g_mouse_passthrough_events != prev_mouse_passthrough_events) {
+  if (force_print != 0 || g_status.mouse_blocked_events != prev_status.mouse_blocked_events || g_status.mouse_passthrough_events != prev_status.mouse_passthrough_events) {
     if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
-    printf("Mouse blocked events:        %6d/%6d%s\n", g_mouse_blocked_events, g_mouse_blocked_events+g_mouse_passthrough_events, ANSI_CLEAR_EOL);
-    printf("Mouse passthrough events:    %6d/%6d%s\n", g_mouse_passthrough_events, g_mouse_blocked_events+g_mouse_passthrough_events, ANSI_CLEAR_EOL);
+    printf("Mouse blocked events:        %6d/%6d%s\n", g_status.mouse_blocked_events, g_status.mouse_blocked_events+g_status.mouse_passthrough_events, ANSI_CLEAR_EOL);
+    printf("Mouse passthrough events:    %6d/%6d%s\n", g_status.mouse_passthrough_events, g_status.mouse_blocked_events+g_status.mouse_passthrough_events, ANSI_CLEAR_EOL);
   } else if (back_lines != 0)
     back_lines = back_lines - 2;
   else
     printf("\n\n");
-  if (force_print != 0 || g_remapped_events != prev_remapped_events || g_processed_events != prev_processed_events || g_filtered_events != prev_filtered_events) {
+  if (force_print != 0 || g_status.remapped_events != prev_status.remapped_events || g_status.processed_events != prev_status.processed_events || g_status.filtered_events != prev_status.filtered_events) {
     if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
-    printf("Remapped events:             %6d/%6d%s\n", g_remapped_events, g_remapped_events+g_processed_events+g_filtered_events, ANSI_CLEAR_EOL);
-    printf("Processed events:            %6d/%6d%s\n", g_processed_events, g_remapped_events+g_processed_events+g_filtered_events, ANSI_CLEAR_EOL);
-    printf("Filtered out events:         %6d/%6d%s\n", g_filtered_events, g_remapped_events+g_processed_events+g_filtered_events, ANSI_CLEAR_EOL);
+    printf("Remapped events:             %6d/%6d%s\n", g_status.remapped_events, g_status.remapped_events+g_status.processed_events+g_status.filtered_events, ANSI_CLEAR_EOL);
+    printf("Processed events:            %6d/%6d%s\n", g_status.processed_events, g_status.remapped_events+g_status.processed_events+g_status.filtered_events, ANSI_CLEAR_EOL);
+    printf("Filtered out events:         %6d/%6d%s\n", g_status.filtered_events, g_status.remapped_events+g_status.processed_events+g_status.filtered_events, ANSI_CLEAR_EOL);
   } else if (back_lines != 0)
     back_lines = back_lines - 3;
   else
@@ -166,12 +158,13 @@ int print_status(int back_lines, int force_print) {
     lines++;
   }
   curr_input_buffer_count = input_buffer_count(&g_input_buffer);
-  if (force_print != 0 || curr_input_buffer_count != prev_input_buffer_count || g_input_buffer_max != prev_input_buffer_max) {
+  if (force_print != 0 || lines != g_status_lines ||
+      curr_input_buffer_count != prev_input_buffer_count || g_status.input_buffer_max != prev_status.input_buffer_max) {
     if (back_lines != 0) {printf(ANSI_BACK(back_lines)); back_lines = 0;}
     printf("Input buffer utilization: %3d/%3d (%3d/%3d peak)%s\n",
            curr_input_buffer_count,
            INPUT_BUFFER_SIZE,
-           g_input_buffer_max,
+           g_status.input_buffer_max,
            INPUT_BUFFER_SIZE,
            ANSI_CLEAR_EOL);
   } else if (back_lines != 0)
@@ -179,25 +172,32 @@ int print_status(int back_lines, int force_print) {
   else
     printf("\n");
   curr_debug_buffer_count = debug_buffer_count(&g_debug_buffer);
-  if (force_print != 0 || curr_debug_buffer_count != prev_debug_buffer_count || g_debug_buffer_max != prev_debug_buffer_max) {
-    printf("Debug buffer utilization: %3d/%3d (%3d/%3d peak)%s",
+  if (force_print != 0 ||  lines != g_status_lines ||
+      curr_debug_buffer_count != prev_debug_buffer_count || g_status.debug_buffer_max != prev_status.debug_buffer_max) {
+    printf("Debug buffer utilization: %3d/%3d (%3d/%3d peak)%s\n",
            curr_debug_buffer_count,
            DEBUG_BUFFER_SIZE,
-           g_debug_buffer_max,
+           g_status.debug_buffer_max,
            DEBUG_BUFFER_SIZE,
            ANSI_CLEAR_EOL);
+  } else if (back_lines != 0)
+    back_lines = back_lines - 1;
+  else
+    printf("\n");
+  if (force_print != 0 ||  lines != g_status_lines ||
+      g_profiler_timer.delta_time.QuadPart != prev_delta_time.QuadPart) {
+    LARGE_INTEGER freq;
+    QueryPerformanceFrequency(&freq);
+    printf("Response time: %.3f us (max=%.3f us) @ %.0f MHz%s",
+           1e6 * (double)g_profiler_timer.delta_time.QuadPart / (double)freq.QuadPart,
+           1e6 * (double)g_profiler_timer.max_delta_time.QuadPart / (double)freq.QuadPart,
+           1e-6 * (double)freq.QuadPart,
+           ANSI_CLEAR_EOL);
   }
-  prev_keyboard_blocked_events = g_keyboard_blocked_events;
-  prev_keyboard_passthrough_events = g_keyboard_passthrough_events;
-  prev_mouse_blocked_events = g_mouse_blocked_events;
-  prev_mouse_passthrough_events = g_mouse_passthrough_events;
-  prev_remapped_events = g_remapped_events;
-  prev_processed_events = g_processed_events;
-  prev_filtered_events = g_filtered_events;
+  prev_status = g_status;
   prev_input_buffer_count = curr_input_buffer_count;
-  prev_input_buffer_max = g_input_buffer_max;
   prev_debug_buffer_count = curr_debug_buffer_count;
-  prev_debug_buffer_max = g_debug_buffer_max;
+  prev_delta_time = g_profiler_timer.delta_time;
   return lines;
 }
 
@@ -413,11 +413,12 @@ void free_all() {
   g_remap_list = NULL;
   free_layers(g_layer_list);
   g_layer_list = NULL;
-  for (int i = 0; i < 256; i++) {
+  for (int i = 0; i < VIRT_CODE_SIZE; i++) {
     free_remap_nodes(g_remap_array[i]);
     g_remap_array[i] = NULL;
-    g_remap_by_id[i] = NULL;
   }
+  for (int i = 0; i < REMAP_ID_SIZE; i++)
+    g_remap_by_id[i] = NULL;
 }
 
 static struct Layer *find_layer(struct Layer *list, char *name) {
@@ -445,7 +446,7 @@ static int register_remap(struct Remap *remap) {
   if (g_remap_list) {
     struct Remap *tail = g_remap_list;
     while (tail->next) tail = tail->next;
-    if (tail->id == 255) return 1;
+    if (tail->id >= REMAP_ID_SIZE-1) return 1;
     tail->next = remap;
     remap->id = tail->id + 1;
   } else {
@@ -512,14 +513,14 @@ int load_config_line(char *line, int linenum) {
     if (parsee_is_valid()) {
       if (register_remap(g_remap_parsee)) {
         g_remap_parsee = NULL;
-        printf("Config error (line %d): Exceeded the maximum limit of 255 remappings.\n", linenum);
+        printf("Config error (line %d): Exceeded the maximum limit of %d remappings.\n", linenum, REMAP_ID_SIZE-1);
         return 1;
       }
       g_remap_parsee = NULL;
     }
     while (g_remap_list) {
       struct RemapNode *remap_node = new_remap_node(g_remap_list);
-      int index = g_remap_list->from->virt_code & 0xFF;
+      int index = g_remap_list->from->virt_code & VIRT_CODE_MASK;
 
       if (g_remap_list->layer || (g_remap_array[index] && !g_remap_array[index]->remap->layer)) {
         remap_node->next = g_remap_array[index];
@@ -613,7 +614,7 @@ int load_config_line(char *line, int linenum) {
     if (g_remap_parsee->from && parsee_is_valid()) {
       if (register_remap(g_remap_parsee)) {
         g_remap_parsee = NULL;
-        printf("Config error (line %d): Exceeded the maximum limit of 255 remappings.\n", linenum);
+        printf("Config error (line %d): Exceeded the maximum limit of %d remappings.\n", linenum, REMAP_ID_SIZE-1);
         return 1;
       }
       g_remap_parsee = new_remap(NULL, NULL, NULL, NULL, NULL, NULL, NULL);

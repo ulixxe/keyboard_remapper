@@ -38,7 +38,7 @@ void mouse_emulation(int keycode,
                      int remap_id,
                      struct InputBuffer *input_buffer);
 
-HANDLE g_hMouseTimer;
+extern HANDLE g_hMouseTimer;
 extern int g_mouse_timer;
 
 #endif // MOUSE_H

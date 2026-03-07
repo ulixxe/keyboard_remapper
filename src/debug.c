@@ -2,12 +2,12 @@
 #include <stdio.h>
 #include <time.h>
 #include "debug.h"
-#include "debug_buffer.h"
 #include "keyboard_remapper.h"
 #include "input_buffer.h"
 #include "keys.h"
 #include "config.h"
 #include "remap.h"
+#include "mouse.h"
 
 #define DEBUG_INTERVAL_MS 200
 #define DEBUG_START_MS (DEBUG_INTERVAL_MS/2)
@@ -17,9 +17,9 @@ static int g_log_counter = 1;
 static int g_log_indent_level = 0;
 static int g_log_duplicates = 1;
 int g_log_last_packet_size = 0;
-int g_debug_buffer_max = 0;
 struct DebugBuffer g_debug_buffer;
 static FILE *g_debug_file = NULL;
+struct ProfilerTimer g_profiler_timer;
 
 void debug_file_init(void) {
   g_debug_file = fopen("debug.log", "a");
@@ -84,7 +84,7 @@ static VOID CALLBACK debug_callback(PVOID lpParam, BOOLEAN TimerOrWaitFired) {
   while (!debug_buffer_empty(&g_debug_buffer)) {
     n = debug_buffer_move_cons_head(&g_debug_buffer, DEBUG_BUFFER_SIZE, &tail);
     if (n > 0) {
-      if (g_debug_buffer_max < n) g_debug_buffer_max = n;
+      if (g_status.debug_buffer_max < n) g_status.debug_buffer_max = n;
       if (debug_timer) {
         uint32_t head = tail + n;
         uint32_t curr = tail;
@@ -185,10 +185,10 @@ void log_handle_input_start(int scan_code, int virt_code, enum Direction directi
   out->data_type = 1;
   out->len = snprintf(out->data,
                       sizeof(out->data),
-                      "[%s] %s %s (scan:0x%04X virt:0x%02X flags:0x%02X dwExtraInfo:0x%IX)",
-                      (is_injected && ((dwExtraInfo & 0xFFFFFF00) == INJECTED_KEY_ID)) ? "output" : "input",
+                      "%s %-17s %s (scan:0x%04X virt:0x%03X flags:0x%02X dwExtraInfo:0x%IX)",
+                      (is_injected && ((dwExtraInfo & ~REMAP_ID_MASK) == INJECTED_KEY_ID)) ? "[output]" : "[input] ",
                       friendly_virt_code_name(virt_code),
-                      (direction == DOWN) ? "DOWN" : "UP",
+                      (direction == UP) ? "  UP" : (direction == DOWN) ? "DOWN" : "    ",
                       scan_code, // MapVirtualKeyA(virt_code, MAPVK_VK_TO_VSC_EX)
                       virt_code,
                       flags,
@@ -223,9 +223,9 @@ void log_handle_input_end(int scan_code, int virt_code, enum Direction direction
     out->data_type = 2;
     out->len = snprintf(out->data,
                         sizeof(out->data),
-                        "blocked-input: %s %s",
+                        "         %-17s %s (blocked input)",
                         friendly_virt_code_name(virt_code),
-                        (direction == DOWN) ? "DOWN" : "UP");
+                        (direction == UP) ? "  UP" : (direction == DOWN) ? "DOWN" : "    ");
     if (out->len >= sizeof(out->data)) {
       out->len = sizeof(out->data) - 1;
     }
@@ -242,32 +242,40 @@ void log_handle_input_end(int scan_code, int virt_code, enum Direction direction
 void log_send_input(char *remap_name, const KeyDef *key, enum Direction direction) {
   uint32_t n, tail;
   int index;
-  n = debug_buffer_move_prod_head(&g_debug_buffer, &tail);
-  index = tail & DEBUG_BUFFER_MASK;
-  if (n == 0) {
-    if (g_debug) debug_print(ANSI_RED, "Error: debug buffer is full!\n");
-    debug_file("Error: debug buffer is full!");
-    return;
-  }
-  struct DebugData *out = &g_debug_buffer.debugs[index];
-  out->id = g_log_counter;
-  out->key_time = 0;
-  out->time_offset = 0;
-  out->data_type = 2;
-  out->len = snprintf(out->data,
-                      sizeof(out->data),
-                      "%s: %s %s",
-                      remap_name,
-                      key ? key->name : "???",
-                      (direction == DOWN) ? "DOWN" : "UP");
-  if (out->len >= sizeof(out->data)) {
-    out->len = sizeof(out->data) - 1;
-  }
-  debug_buffer_update_tail(&g_debug_buffer.prod, tail, n);
-  if (g_hDebugTimer == NULL) {
-    if (!CreateTimerQueueTimer(&g_hDebugTimer, g_hTimerQueue, (WAITORTIMERCALLBACK)debug_callback,
-                               &g_debug, DEBUG_START_MS, DEBUG_INTERVAL_MS, 0)) {
-      DEBUG(-1, debug_print(ANSI_RED, "CreateTimerQueueTimer failed (%d)\n", GetLastError()));
+  enum Direction out_direction;
+  if ((key->virt_code == (0x100|MS_W_U) || key->virt_code == (0x100|MS_W_D) ||
+       key->virt_code == (0x100|MS_W_L) || key->virt_code == (0x100|MS_W_R))) // ADD all the other mouse movements
+    out_direction = NONE;
+  else
+    out_direction = direction;
+  if (!(direction == UP && out_direction == NONE)) {
+    n = debug_buffer_move_prod_head(&g_debug_buffer, &tail);
+    index = tail & DEBUG_BUFFER_MASK;
+    if (n == 0) {
+      if (g_debug) debug_print(ANSI_RED, "Error: debug buffer is full!\n");
+      debug_file("Error: debug buffer is full!");
+      return;
+    }
+    struct DebugData *out = &g_debug_buffer.debugs[index];
+    out->id = g_log_counter;
+    out->key_time = 0;
+    out->time_offset = 0;
+    out->data_type = 2;
+    out->len = snprintf(out->data,
+                        sizeof(out->data),
+                        "         %-17s %s (%s)",
+                        key ? key->name : "???",
+                        (out_direction == UP) ? "  UP" : (out_direction == DOWN) ? "DOWN" : "    ",
+                        remap_name);
+    if (out->len >= sizeof(out->data)) {
+      out->len = sizeof(out->data) - 1;
+    }
+    debug_buffer_update_tail(&g_debug_buffer.prod, tail, n);
+    if (g_hDebugTimer == NULL) {
+      if (!CreateTimerQueueTimer(&g_hDebugTimer, g_hTimerQueue, (WAITORTIMERCALLBACK)debug_callback,
+                                 &g_debug, DEBUG_START_MS, DEBUG_INTERVAL_MS, 0)) {
+        DEBUG(-1, debug_print(ANSI_RED, "CreateTimerQueueTimer failed (%d)\n", GetLastError()));
+      }
     }
   }
 }

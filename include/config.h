@@ -4,6 +4,9 @@
 #include <windows.h> // DWORD
 #include "keys.h"
 
+#define REMAP_ID_SIZE 256 // power of 2
+#define REMAP_ID_MASK (REMAP_ID_SIZE-1)
+
 // Types
 // --------------------------------------
 enum State {
@@ -94,8 +97,8 @@ extern int g_scancode;
 extern int g_priority;
 
 extern struct Remap *g_remap_list;
-extern struct Remap *g_remap_by_id[256];
-extern struct RemapNode *g_remap_array[256];
+extern struct Remap *g_remap_by_id[REMAP_ID_SIZE];
+extern struct RemapNode *g_remap_array[VIRT_CODE_SIZE];
 extern struct Layer *g_layer_list;
 
 int load_config_line(char *line, int linenum);

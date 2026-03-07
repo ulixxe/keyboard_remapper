@@ -314,10 +314,10 @@ static void press_mouse_button(int i, enum Direction direction) {
   if (i >= 5) {
     i = state.selected_button;
   }
-  if (direction == DOWN) {
-    state.buttons |= (1 << i);
-  } else {
+  if (direction == UP) {
     state.buttons &= ~(1 << i);
+  } else {
+    state.buttons |= (1 << i);
   }
 }
 
@@ -344,10 +344,10 @@ void mouse_emulation(int keycode, enum Direction direction, int remap_id, struct
   }
   if (held_mask != 0) {
     // Update `held_keys` bitfield.
-    if (direction == DOWN) {
-      state.held_keys |= held_mask;
-    } else {
+    if (direction == UP) {
       state.held_keys &= ~held_mask;
+    } else {
+      state.held_keys |= held_mask;
     }
 
     // Update cursor movement direction.
@@ -410,12 +410,12 @@ void mouse_emulation(int keycode, enum Direction direction, int remap_id, struct
       press_mouse_button(255, direction);
       break;
     case MS_HLDS:
-      if (direction == DOWN) {
+      if (direction != UP) {
         press_mouse_button(255, DOWN);
       }
       break;
     case MS_RELS:
-      if (direction == DOWN) {
+      if (direction != UP) {
         press_mouse_button(255, UP);
       }
       break;
@@ -424,7 +424,7 @@ void mouse_emulation(int keycode, enum Direction direction, int remap_id, struct
     case MS_SEL3:
     case MS_SEL4:
     case MS_SEL5:
-      if (direction == DOWN) {
+      if (direction != UP) {
         state.selected_button = keycode - MS_SEL1;
         // Reset buttons when switching selection.
         state.buttons = 0;
